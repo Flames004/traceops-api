@@ -240,7 +240,8 @@ describe("API Key Module Integration", () => {
     it("should reject tampered key secrets", async () => {
       const generated = generateApiKey();
       // Store real hash, but caller presents tampered secret
-      const tamperedKey = generated.rawKey.slice(0, -1) + "0";
+      const lastChar = generated.rawKey.slice(-1);
+      const tamperedKey = generated.rawKey.slice(0, -1) + (lastChar === "a" ? "b" : "a");
 
       vi.mocked(db.apiKey.findFirst).mockResolvedValueOnce({
         id: "key-1",

@@ -235,14 +235,19 @@ export async function validateIncomingKey(
   }
 
   // Non-blocking fire-and-forget update of lastUsedAt
-  db.apiKey
-    .update({
+  try {
+    const updatePromise = db.apiKey.update({
       where: { id: keyRecord.id },
       data: { lastUsedAt: new Date() },
-    })
-    .catch((err) => {
-      logger.warn("Failed to update apiKey lastUsedAt timestamp", { error: err.message });
     });
+    if (updatePromise && typeof updatePromise.catch === "function") {
+      updatePromise.catch((err) => {
+        logger.warn("Failed to update apiKey lastUsedAt timestamp", { error: err.message });
+      });
+    }
+  } catch (err: any) {
+    logger.warn("Failed to update apiKey lastUsedAt timestamp", { error: err.message });
+  }
 
   return {
     isValid: true,

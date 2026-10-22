@@ -4,6 +4,15 @@ import { createApp } from "../app.js";
 import { db } from "../lib/db.js";
 import { startMockUpstream, MockUpstreamServer } from "../tests/mockUpstream.js";
 import { generateApiKey } from "../lib/apiKey.js";
+import { redis } from "../lib/redis.js";
+
+vi.mock("../lib/redis.js", () => {
+  return {
+    redis: {
+      eval: vi.fn(),
+    },
+  };
+});
 
 vi.mock("../lib/db.js", () => {
   return {
@@ -78,6 +87,7 @@ describe("Gateway Reverse Proxy Pipeline", () => {
     });
 
     vi.mocked(db.apiKey.update).mockResolvedValue({} as any);
+    vi.mocked(redis.eval).mockResolvedValue([1, 59, 60]);
     return serviceRecord;
   }
 
@@ -219,5 +229,35 @@ describe("Gateway Reverse Proxy Pipeline", () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ status: 500, message: "Simulated upstream status 500" });
+  });
+
+  it("should inject RateLimit headers on permitted requests", async () => {
+    setupServiceMock();
+    vi.mocked(redis.eval).mockResolvedValueOnce([1, 42, 60]);
+
+    const res = await request(app)
+      .get(`/gateway/${serviceSlug}/hello`)
+      .set("x-api-key", validKey.rawKey);
+
+    expect(res.status).toBe(200);
+    expect(res.headers).toHaveProperty("ratelimit-limit", "60");
+    expect(res.headers).toHaveProperty("ratelimit-remaining", "42");
+    expect(res.headers).toHaveProperty("ratelimit-reset", "60");
+  });
+
+  it("should return 429 and Retry-After header when rate limit is exceeded", async () => {
+    setupServiceMock();
+    // Simulate Redis returning 0 allowed, 0 remaining, 18s reset
+    vi.mocked(redis.eval).mockResolvedValueOnce([0, 0, 18]);
+
+    const res = await request(app)
+      .get(`/gateway/${serviceSlug}/hello`)
+      .set("x-api-key", validKey.rawKey);
+
+    expect(res.status).toBe(429);
+    expect(res.body.code).toBe("RATE_LIMIT_EXCEEDED");
+    expect(res.body.retryAfterSeconds).toBe(18);
+    expect(res.headers).toHaveProperty("retry-after", "18");
+    expect(res.headers).toHaveProperty("ratelimit-remaining", "0");
   });
 });
