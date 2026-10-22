@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { authRoutes } from "./modules/auth/auth.routes.js";
+import { serviceRoutes } from "./modules/services/service.routes.js";
 
 export function createApp(): Express {
   const app = express();
@@ -32,6 +34,10 @@ export function createApp(): Express {
       service: "TraceOpsAPI",
     });
   });
+
+  // Control Plane APIs
+  app.use("/api/v1/auth", authRoutes);
+  app.use("/api/v1/services", serviceRoutes);
 
   // Central error handler
   app.use(errorHandler);
