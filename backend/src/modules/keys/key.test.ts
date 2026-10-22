@@ -55,7 +55,7 @@ describe("API Key Module Integration", () => {
           rateLimitWindowMs: null,
           expiresAt: null,
           createdAt: new Date(),
-        } as any)
+        }) as any
       );
 
       const res = await request(app)
