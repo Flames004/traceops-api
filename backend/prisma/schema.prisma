@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("ADMIN")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  services     Service[]
+
+  @@map("users")
+}
+
+model Service {
+  id                String       @id @default(uuid())
+  name              String
+  slug              String       @unique
+  description       String?
+  upstreamUrl       String
+  routePrefix       String       @default("")
+  isActive          Boolean      @default(true)
+  timeoutMs         Int          @default(5000)
+  allowedMethods    String[]     @default(["GET", "POST", "PUT", "DELETE", "PATCH"])
+  rateLimitMax      Int          @default(60)       // Default 60 requests
+  rateLimitWindowMs Int          @default(60000)    // Per 60,000 ms (1 minute)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  userId            String
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  apiKeys           ApiKey[]
+  requestLogs       RequestLog[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("services")
+}
+
+model ApiKey {
+  id                String       @id @default(uuid())
+  name              String
+  keyPrefix         String       @unique            // e.g. "tr_live_a1b2c3d4"
+  keyHash           String       @unique            // SHA-256 digest of raw key
+  isActive          Boolean      @default(true)
+  rateLimitMax      Int?                            // Overrides service rateLimitMax if set
+  rateLimitWindowMs Int?                            // Overrides service rateLimitWindowMs if set
+  expiresAt         DateTime?
+  lastUsedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  serviceId         String
+  service           Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  requestLogs       RequestLog[]
+
+  @@index([keyPrefix])
+  @@index([serviceId, isActive])
+  @@map("api_keys")
+}
+
+model RequestLog {
+  id              String       @id @default(uuid())
+  serviceId       String
+  service         Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  apiKeyId        String?
+  apiKey          ApiKey?      @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  method          String
+  path            String
+  statusCode      Int
+  latencyMs       Int
+  clientIp        String?
+  userAgent       String?
+  failureCategory String?      // AUTH_FAILED | RATE_LIMITED | UPSTREAM_TIMEOUT | UPSTREAM_ERROR | SSRF_BLOCKED | BAD_REQUEST
+  errorMessage    String?
+  timestamp       DateTime     @default(now())
+
+  @@index([serviceId, timestamp])
+  @@index([timestamp])
+  @@index([statusCode])
+  @@index([apiKeyId, timestamp])
+  @@map("request_logs")
+}
