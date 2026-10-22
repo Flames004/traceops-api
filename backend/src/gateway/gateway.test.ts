@@ -24,6 +24,9 @@ vi.mock("../lib/db.js", () => {
         findFirst: vi.fn(),
         update: vi.fn(),
       },
+      requestLog: {
+        create: vi.fn().mockResolvedValue({}),
+      },
     },
   };
 });
@@ -69,7 +72,7 @@ describe("Gateway Reverse Proxy Pipeline", () => {
 
     vi.mocked(db.service.findUnique).mockResolvedValue(serviceRecord as any);
 
-    vi.mocked(db.apiKey.findFirst).mockImplementation((args: any) => {
+    vi.mocked(db.apiKey.findFirst).mockImplementation((args: any): any => {
       if (args.where?.keyPrefix === validKey.keyPrefix && args.where?.serviceId === serviceId) {
         return Promise.resolve({
           id: "key-1",
