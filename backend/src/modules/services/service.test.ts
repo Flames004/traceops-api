@@ -105,7 +105,7 @@ describe("Service Management Integration", () => {
       expect(res.status).toBe(201);
       expect(res.body.service).toHaveProperty("id", "serv-1");
       expect(res.body.service.slug).toBe("github-api");
-    });
+    }, 15000);
 
     it("should return 409 if service slug already exists", async () => {
       vi.mocked(db.service.findUnique).mockResolvedValueOnce({

@@ -11,15 +11,27 @@ import { gatewayRouter } from "./gateway/router.js";
 export function createApp(): Express {
   const app = express();
 
-  // Security headers
-  app.use(helmet());
+  // Security headers with cross-origin resource policy enabled
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+  );
 
-  // CORS configuration
+  // Robust CORS configuration for cloud deployments
   app.use(
     cors({
-      origin: "*", // Will be restricted to frontend URL in production
+      origin: "*", // Allows requests from Vercel, localhost, or any client
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
+      allowedHeaders: ["Content-Type", "Authorization", "x-api-key", "Accept", "Origin", "X-Requested-With"],
+      exposedHeaders: [
+        "X-Gateway-Request-Id",
+        "X-Gateway-Latency-Ms",
+        "RateLimit-Limit",
+        "RateLimit-Remaining",
+        "RateLimit-Reset",
+        "Retry-After",
+      ],
     })
   );
 

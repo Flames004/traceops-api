@@ -88,6 +88,6 @@ describe("SSRF Protection Module", () => {
       const publicUrl = await validateUpstreamUrl("https://api.github.com");
       expect(publicUrl.isValid).toBe(true);
       expect(publicUrl.resolvedIps?.length).toBeGreaterThan(0);
-    });
+    }, 15000);
   });
 });

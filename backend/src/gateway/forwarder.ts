@@ -22,6 +22,16 @@ const GATEWAY_SECURITY_HEADERS = new Set([
   "authorization",
 ]);
 
+// Upstream CORS response headers that must not be forwarded because the Gateway manages its own CORS policy
+const UPSTREAM_CORS_HEADERS = new Set([
+  "access-control-allow-origin",
+  "access-control-allow-methods",
+  "access-control-allow-headers",
+  "access-control-allow-credentials",
+  "access-control-expose-headers",
+  "access-control-max-age",
+]);
+
 /**
  * Filters and sanitizes client headers for forwarding to upstream.
  */
@@ -79,10 +89,10 @@ export async function gatewayForwarder(req: Request, res: Response): Promise<voi
 
     const latencyMs = Date.now() - startTime;
 
-    // Forward safe upstream response headers
+    // Forward safe upstream response headers (excluding hop-by-hop and upstream CORS headers)
     for (const [key, value] of Object.entries(upstreamResponse.headers)) {
       const lower = key.toLowerCase();
-      if (!HOP_BY_HOP_HEADERS.has(lower) && lower !== "content-length") {
+      if (!HOP_BY_HOP_HEADERS.has(lower) && !UPSTREAM_CORS_HEADERS.has(lower) && lower !== "content-length") {
         if (typeof value === "string" || typeof value === "number" || Array.isArray(value)) {
           res.setHeader(key, value as any);
         }
